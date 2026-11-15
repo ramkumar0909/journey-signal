@@ -1,0 +1,4 @@
+name: synthetic_black_friday
+count: 1000
+fault_profile: faulty
+fault_rate: 0.15

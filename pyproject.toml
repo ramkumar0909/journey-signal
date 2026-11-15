@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "journeysignal"
+version = "0.1.0"
+description = "Synthetic customer-event quality and potential journey exposure"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+license = "GPL-3.0-only"
+dependencies = [
+  "fastapi>=0.115,<1", "pydantic>=2.10,<3", "pydantic-settings>=2.7,<3",
+  "uvicorn>=0.34,<1", "confluent-kafka>=2.8,<3", "sqlalchemy>=2.0,<2.1",
+  "alembic>=1.14,<2", "psycopg[binary]>=3.2,<4", "pyyaml>=6,<7",
+  "prometheus-client>=0.21,<1", "httpx>=0.28,<1", "polars>=1.20,<2",
+]
+
+[project.optional-dependencies]
+analytics = ["duckdb>=1.2,<3"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<10", "hypothesis>=6.125,<7", "pytest-cov>=6,<8",
+  "ruff>=0.9,<1", "mypy>=1.14,<2", "types-PyYAML>=6,<7",
+  "bandit>=1.8,<2", "pip-audit>=2.8,<3",
+]
+
+[project.scripts]
+journeysignal = "journeysignal.interfaces.cli.main:main"
+journeysignal-worker = "journeysignal.interfaces.worker.main:main"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["infrastructure: requires real Kafka and PostgreSQL"]
+
+[tool.coverage.run]
+source = ["journeysignal.domain", "journeysignal.application"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 85

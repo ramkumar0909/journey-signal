@@ -1,0 +1,8 @@
+title = "JourneySignal secret scanning"
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated environments and explicitly disposable local-demo credentials"
+paths = ['''(^|/)(\.venv|\.git|\.idea|artifacts|\.mypy_cache|\.pytest_cache|\.ruff_cache)/''', '''uv\.lock$''']
+regexes = ['''disposable_(owner|demo|reader)_only''']

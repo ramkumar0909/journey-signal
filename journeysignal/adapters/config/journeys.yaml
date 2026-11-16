@@ -1,0 +1,10 @@
+journeys:
+  - id: abandoned_cart_reminder
+    dependency_id: abandoned_cart_add_to_cart_v1
+    display_name: Abandoned cart reminder
+    dependency_description: Uses qualified add-to-cart events with customer identity
+    required_event_types: [add_to_cart]
+    required_fields: [event_id, event_time, customer_id, properties.cart_id]
+    relevant_rule_ids: [JSQ-001, JSQ-002, JSQ-003, JSQ-004, JSQ-005]
+    freshness_threshold_seconds: 300
+    owner_role: marketing-technology

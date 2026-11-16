@@ -1,0 +1,64 @@
+name: quality
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.8"
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --locked --all-extras
+      - run: uv run --locked ruff format --check .
+      - run: uv run --locked ruff check .
+      - run: uv run --locked mypy journeysignal
+      - run: uv run --locked bandit -q -r journeysignal
+      - run: uv run --locked pip-audit
+      - name: Secret scan
+        run: |
+          uv run --locked python scripts/install_gitleaks.py
+          artifacts/tools/gitleaks dir . --redact --report-format json --report-path artifacts/gitleaks.json
+      - name: Fast tests
+        run: uv run --locked pytest -q tests/unit tests/property tests/contract --junitxml=artifacts/fast-tests.xml
+      - name: Start infrastructure
+        run: docker compose up -d --wait
+      - name: Real database and broker tests
+        env:
+          JS_TEST_DATABASE_URL: postgresql+psycopg://journeysignal_owner:disposable_owner_only@127.0.0.1:5432/journeysignal
+          JS_TEST_KAFKA_SERVERS: 127.0.0.1:9092
+        run: uv run --locked pytest -q tests --cov --cov-report=xml --junitxml=artifacts/all-tests.xml
+      - name: Build and boot hardened image
+        run: |
+          docker compose build api
+          docker compose --profile app up -d --wait
+          curl --fail http://127.0.0.1:8000/health/live
+          curl --fail http://127.0.0.1:8000/health/ready
+          uv run --locked journeysignal simulate --fault-profile known --run-id ci
+          uv run --locked python scripts/wait_for_demo.py
+      - name: Stop local services
+        if: always()
+        run: docker compose --profile app down -v
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: verification
+          path: |
+            artifacts/*tests.xml
+            artifacts/e2e-report.json
+            artifacts/gitleaks.json
+            coverage.xml
+          if-no-files-found: warn
